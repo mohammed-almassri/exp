@@ -1,0 +1,106 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+    integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+  <title>aaa</title>
+</head>
+
+<body>
+  <input type="text" id="f" />
+  <input type="text" id="v" />
+  <table id="op">
+    <thead></thead>
+    <tbody>
+
+    </tbody>
+  </table>
+
+</body>
+<script src="index.js"></script>
+<script>
+
+  const newArr = [];
+  Object.keys(operators).map(function (key, index) {
+    newArr.push([key, operators[key]["precedence"]]);
+  });
+
+  const sorted = newArr.sort((a, b) => {
+    if (a[1] < b[1]) {
+      return -1;
+    }
+    return 1;
+  }).map(a => operators[a[0]]);
+
+  $(document).ready(function () {
+    $('#op').html(createList(sorted.reverse()));
+    $('input').on('input', function () {
+      const f = $(this).val();
+      $('#v').val(parse(lex(f)));
+    });
+    $(document).on('click','button',function(){
+      const f = $("#f").val();
+      $('#v').val(parse(lex(f)));
+    })
+  });
+
+
+
+  function createList(operators) {
+    let builder = '';
+    operators.forEach(i => {
+      builder += createLi(i);
+    });
+    return builder;
+  }
+
+  function createLi(op) {
+    return `
+    <tr lexeme="${op.lexeme}">
+      <td>${op.lexeme}</td>
+      <td><button class="prec" lexeme="${op.lexeme}" inc="-1">+</button></td>
+      <td><button class="prec" lexeme="${op.lexeme}" inc="1">-</button></td>
+      <td>
+        <label for="right${op.lexeme}">
+        <input type="radio" id="right${op.lexeme}" ${op.assoc == 'right' ? 'checked' : ''} name="assoc${op.lexeme}" class="right">
+        right
+      </label>
+      <label for="left${op.lexeme}">
+        <input type="radio" id="left${op.lexeme}" ${op.assoc == 'left' ? 'checked' : ''} name="assoc${op.lexeme}" class="left">
+        left
+      </label>
+      </td>
+    </tr>
+    `;
+  }
+
+  $(document).on('click', '.prec', function () {
+    const lex = $(this).attr('lexeme')
+    const index = sorted.findIndex(function (op) {
+
+      return op.lexeme == lex
+    });
+    const inc = Number.parseInt($(this).attr('inc'));
+    array_move(sorted, index, index + inc);
+    for (let i = sorted.length-1; i >= 0; i--) {
+      const element = sorted[i];
+      operators[element.lexeme].precedence = i;
+    }
+    console.log(operators);
+    
+    $('#op').html(createList(sorted));
+  })
+
+  function array_move(arr, old_index, new_index) {
+    if (new_index >= arr.length || new_index < 0) {
+      return false;
+    }
+    arr.splice(new_index, 0, arr.splice(old_index, 1)[0]);
+    return arr; // for testing
+  };
+
+</script>
+
+</html>
