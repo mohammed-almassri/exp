@@ -1,3 +1,70 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+    integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+  <title>aaa</title>
+  <style>
+    body{
+      font-family: 'Courier New', Courier, monospace;
+    }
+    table th, table td{
+      border: 1px solid black;
+    }
+
+    table{
+      border-collapse: collapse;
+    }
+    .w-100{
+      width: 100%;
+      margin: 5px;
+    }
+    .scroll{
+      overflow-y: scroll;
+      max-height: 90vh;
+      padding-right: 5px;
+    }
+    .red{
+      color: red;
+    }
+    .green{
+      color: green;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1 style="text-align: center;">
+      Compiler Design Project
+    </h1>
+    <h2 style="text-align: center;">
+      Mohammed Almassri - 20160418
+    </h2>
+  </header>
+  <main style="display: flex;flex-direction: row; justify-content: space-around;">
+    <div>
+      <textarea id="code" rows="30" cols="50">
+program example;
+var x, y: integer;
+function gcd(a, b: integer): integer;
+begin
+if b = 0 then gcd := a
+else gcd := gcd(b, a mod b) end;
+begin
+read(x, y);
+write(gcd(x, y))
+end.
+      </textarea>
+    </div>
+    <div class="message" style="width:20vw">
+      Compiled Successfully
+    </div>
+  </main>
+</body>
+<script>
 class Token {
   constructor(lexeme, type,row) {
     this.lexeme = lexeme;
@@ -536,7 +603,7 @@ const parse = (grammar, input)=>{
         }while(!prod && typeStr);
         if(!prod){
 
-          return `error on token: "${c.lexeme}" at row: ${c.row}`;
+          return `error on token: "${c.lexeme}" at row: ${c.row+1}`;
         }
         stack.pop();
 
@@ -552,10 +619,13 @@ const parse = (grammar, input)=>{
     }
     else{
 
-      return `error on token: "${c.lexeme}" at row: ${c.row}`;
+      return `error on token: "${c.lexeme}" at row: ${c.row+1}`;
     }
   }
-  return "Yes";
+  if(stack[0]=='$' && stack.length==1){
+    return 1;
+  }
+  return `error: unexpected end of input`;
 }
 
 const e = Production.emptyChar();
@@ -604,24 +674,36 @@ const grammar = {
   SHD: p('SHD').add('id.keyword.function','id','ARGS','operator.colon','STDT',';')
   .add('id.keyword.procedure','id','ARGS'),
 };
+</script>
+<script>
+
+  a('#code');
+
+  $(document).ready(function () {
+    $('#code').on('input', function () {
+      a(this)
+    });
+  });
+
+  function a(b){
+    const f = $(b).val();
+    const c = parse(grammar,lex(f));
+    if(c==1){
+      $('.message').text('compiled successfully');
+      $('.message').addClass('green');
+      $('.message').removeClass('red');
+    }
+    else{
+      $('.message').text(c);
+      $('.message').removeClass('green');
+      $('.message').addClass('red');
+    }
+
+
+  }
 
 
 
-const tokens = lex(`
-program example;
-var x, y: integer;
-function gcd(a, b: integer): integer;
-begin
-if b = 0 then gcd := a
-else gcd := gcd(b, a mod b) end;
-begin
-read(x, y,z,as,lol1());
-write(gcd(x, y))
-end.
-`);
+</script>
 
-
-console.log(parse(grammar,tokens));
-
-
-
+</html>

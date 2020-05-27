@@ -17,6 +17,7 @@ class Production{
   }
   setName(n){
     this.name = n;
+    return this;
   }
   toString(){
     let ret = '';
@@ -378,10 +379,6 @@ const first = (grammar, t)=>{
   const prod = grammar[t];
   const ret = [];
   //for each of the alternative right hand sides
-  if(!prod){
-    console.log(t);
-    
-  }
   prod.right.forEach(c => {
     /*
       j is the index of the current symbol we are looking at
@@ -472,43 +469,14 @@ const table = (grammar) =>{
   }
   for (const prods of Object.values(grammar)) {
     const left = prods.left;
-    L1: for (const right of prods.right) {
-
-
-        // let f = first(grammar,right[0]);
-        // flag = f.indexOf(Production.emptyChar())!=-1;
-        // if(f[0]==Production.emptyChar()){
-        //   f = follow(grammar,left);
-        // }
-        // for (const t of f) {
-        //   ret[left][t] = new Production(left).add(...right);
-        // }
-
-        let f, flag, j=0;
-        do{
-            const next = right[j];
-            f = first(grammar,next);
-            if(f[0]==Production.emptyChar()){
-              f = follow(grammar,left);
-            }
-            
-            flag = f.indexOf(Production.emptyChar())!=-1;
-            if(flag){
-              f = f.filter(x=>x!=Production.emptyChar());
-            }
-            for (const t of f) {
-              ret[left][t] = new Production(left).add(...right);
-            }
-
-            // if(j==right.length-1 && flag){
-            //   ret.push(Production.emptyChar());
-            //   break;
-            // }
-
-            j++;
-        }
-        while(flag && j<right.length);
-
+    for (const right of prods.right) {
+      let f = first(grammar,right[0]);
+      if(f[0]==Production.emptyChar()){
+        f = follow(grammar,left);
+      }
+      for (const t of f) {
+        ret[left][t] = new Production(left).add(...right);
+      }
     }
   }
   return ret;
@@ -518,8 +486,8 @@ const parse = (grammar, input)=>{
   const _table = table(grammar);
   const stack = [];
   stack.push('S');
+  console.log(stack);
   for (const c of input) {
-
     let top;
     while(true){
       top = stack[stack.length-1]
@@ -527,32 +495,29 @@ const parse = (grammar, input)=>{
         break;
       }
       else{
-        let typeStr = c.type;
-        let prod;
-        do{
-          prod = _table[top][typeStr];
-          const dotIndex = typeStr.lastIndexOf('.');
-          typeStr = typeStr.slice(0,dotIndex==-1?0:dotIndex);
-        }while(!prod && typeStr);
+        const prod = _table[top][c.type];
         if(!prod){
 
-          return `error on token: "${c.lexeme}" at row: ${c.row}`;
+          return `error on token: "${c.lexeme}" at row: ${c.row} expected ${grammar[top].name}`;
         }
         stack.pop();
+        console.log(stack);
 
         if(prod.right[0][0]!=Production.emptyChar()){
           stack.push(...prod.right[0].reverse());
+          console.log(stack);
+
           prod.right[0].reverse()
         }
       }
     }
-
     if(c.type.startsWith(top)){
       stack.pop();
+  console.log(stack);
     }
     else{
-
-      return `error on token: "${c.lexeme}" at row: ${c.row}`;
+      const expected = top.toLowerCase==top?top:grammar[top].name
+      return `error on token: "${c.lexeme}" at row: ${c.row} expected ${expected}`;
     }
   }
   return "Yes";
@@ -563,45 +528,38 @@ const p= a=>new Production(a)
 const grammar = {
   S:p('S').add('P','$'),
   P:p('P').add('id.keyword.program','id',';','DCL','SDCLS','CS','operator.dotop'),
-  F:p("F").add('F_VAR').add('number').add('(','EXP',')').add('operator.not','F'),
-  F_VAR: p('F_VAR').add('id','F_VAR_'),
-  F_VAR_: p('F_VAR_').add('PS_').add('VAR_').add(e),
+  F:p("F").add('VAR').add('id','EXPL').add('number').add('(','EXP',')').add('operator.not','F'),
   T:p("T").add('F','T_'),
   T_: p('T_').add('operator.mulop','F','T_').add(e),
   SEXP: p('SEXP').add('T','SEXP_').add('operator.addop','T','SEXP_'),
   SEXP_: p('SEXP_').add('operator.addop','T','SEXP_').add('operator.or','T','SEXP_').add(e),
-  VAR : p('VAR').add('id','VAR_'),
-  VAR_: p('VAR_').add('[','EXP',']').add(e),
-  PS : p('PS').add('id','PS_'),
-  PS_: p('PS_').add('(','EEXPL',')').add(e),
-  PS_VAR: p('PS_VAR').add('id','PS_VAR_'),
-  PS_VAR_: p('PS_VAR_').add('PS_').add('VAR_','operator.assignop','EXP').add(e),
-  EXP : p('EXP').add('SEXP','EXP_'),
-  EXP_ : p('EXP_').add(e).add('operator.relop','SEXP'),
-  EEXPL : p('EEXPL').add('EXPL').add(e),
+  VAR : p('VAR').add('id').add('id','[','EXP',']'),
+  PS : p('PS').add('id').add('id','(','EXPL',')'),
+  EXP : p('EXP').add('SEXP').add('SEXP','relop','SEXP'),
   EXPL : p('EXPL').add('EXP','EXPL_'),
   EXPL_: p('EXPL_').add(',','EXP','EXPL_').add(e),
   CS : p('CS').add('id.keyword.begin','OPS','id.keyword.end'),
   OPS : p('OPS').add('STML').add(e),
   STML : p('STML').add('STM','STML_'),
   STML_ : p('STML_').add(';','STM','STML_').add(e),
-  STM : p('STM').add('PS_VAR').add('CS')
+  STM : p('STM').add('VAR','operator.assignop','EXP').add('PS').add('CS')
           .add('id.keyword.if','EXP','id.keyword.then','STM','id.keyword.else','STM')
           .add('id.keyword.while','EXP','id.keyword.do','STM')
           ,
   STDT: p('STDT').add('id.keyword.integer').add('id.keyword.real'),
-  TYPE: p('TYPE').add('STDT').add('id.keyword.array','[','number.integer','operator.dotop','operator.dotop','number.integer',']'),
+  TYPE: p('TYPE').add('STDT').add('id.keyword.array','[','number.integer','operator.dotop','operator.dotop','number.integer',']')
+  ,
   ARGS: p('ARGS').add('(','PL',')').add(e),
   PL : p('PL').add('IDL','operator.colon','TYPE','PL_'),
   PL_ : p('PL_').add(';','IDL','operator.colon','TYPE','PL_').add(e),
   IDL : p('IDL').add('id','IDL_'),
   IDL_ : p('IDL_').add(',','id','IDL_').add(e),
-  DCL : p('DCL').add('DCL_').add(e),
+  DCL : p('DCL').add('DCL_'),
   DCL_ : p('DCL_').add('id.keyword.var','IDL','operator.colon','TYPE',';','DCL_').add(e),
   SDCL: p('SDCL').add('SHD','DCL','CS'),
   SDCLS: p('SDCLS').add('SDCLS_'),
   SDCLS_: p('SDCLS_').add('SDCL',';','SDCLS_').add(e),
-  SHD: p('SHD').add('id.keyword.function','id','ARGS','operator.colon','STDT',';')
+  SHD: p('SHD').add('id.keyword.function','id','ARGS','operator.colon','STDT')
   .add('id.keyword.procedure','id','ARGS'),
 };
 
@@ -615,13 +573,18 @@ begin
 if b = 0 then gcd := a
 else gcd := gcd(b, a mod b) end;
 begin
-read(x, y,z,as,lol1());
+read(x, y);
 write(gcd(x, y))
 end.
 `);
 
+// console.log(tokens);
 
-console.log(parse(grammar,tokens));
+// console.log(JSON.stringify(table(grammar)));
+
+// console.log(parse(grammar,tokens));
+
+console.log(follow(grammar,'EXPL'));
 
 
 
